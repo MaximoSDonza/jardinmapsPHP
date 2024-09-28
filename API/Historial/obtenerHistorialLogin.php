@@ -2,37 +2,31 @@
 require_once('../../cors.php');
 require_once('../../connection.php');
 
-$userNumero = $_GET['userNumero'];
-
 try {
-    $query = "SELECT * FROM users WHERE users_Numero=?";
+    $query = "SELECT users_nombre, MAX(hLogin_fechaUlt) AS ultima_fecha_logueo FROM historiallogin h INNER JOIN users u ON h.hLogin_user = u.users_id GROUP BY h.hLogin_user";
     $stmt = $connection->prepare($query);
-    $stmt->bind_param("s", $userNumero);
     
     if ($stmt->execute()) {
         $result = $stmt->get_result();
-        $resultados = [];
+        $historial = [];
 
         while ($row = $result->fetch_assoc()) {
-            $resultados[] = $row;
+            $historial[] = $row;
         }
 
         echo json_encode([
             'success' => true,
-            'result' => $resultados
+            'historial' => $historial
         ]);
     } else {
-        echo json_encode([
+        return [
             'success' => false,
             'error' => $stmt->error
-        ]);
+        ];
     }
 
     $stmt->close();
 } catch (\Throwable $err) {
-    echo json_encode([
-        'success' => false,
-        'error' => $err->getMessage()
-    ]);
+    throw $err;
 }
 ?>

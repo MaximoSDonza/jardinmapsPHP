@@ -2,10 +2,22 @@
 require_once('../../cors.php');
 require_once('../../connection.php');
 
-if (isset($_FILES['file']) && isset($_POST['pistaCord'])) {
-    $pistaDesc = $_POST['pistaDesc'];
-    $pistaCord = $_POST['pistaCord'];
+if (isset($_FILES['file']) && isset($_POST['cord']) && isset($_POST['user'])) {
+    $cord = $_POST['cord'];
+    $idUser = $_POST['user'];
     $file = $_FILES['file'];
+    $ruta = $_POST['ruta'];
+
+    $cordsQuery = "SELECT cords_id FROM cords WHERE cords_id > ? AND cords_rutas = ? ORDER BY cords_id ASC LIMIT 1";
+    $cordsStmt = $connection->prepare($cordsQuery);
+    $cordsStmt->bind_param("ii", $cord, $ruta);
+
+    if ($cordsStmt->execute()) {
+        $cordResult = $cordsStmt->get_result();
+        if ($cordRow = $cordResult->fetch_assoc()) {
+            $nextCordId = $cordRow['cords_id'];
+        }
+    }
 
     // Verificar si el archivo es una imagen válida
     $allowedTypes = ['image/jpeg', 'image/png'];
@@ -16,7 +28,7 @@ if (isset($_FILES['file']) && isset($_POST['pistaCord'])) {
 
     // Generar un nombre único para la imagen
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $newFileName = uniqid('pista_', true) . '.' . $ext;
+    $newFileName = uniqid('juego_', true) . '.' . $ext;
     $uploadDir = '../../uploads/';  // Carpeta donde se subirán las imágenes
     $uploadFile = $uploadDir . $newFileName;
 
@@ -26,10 +38,14 @@ if (isset($_FILES['file']) && isset($_POST['pistaCord'])) {
         $filePath = 'uploads/' . $newFileName;
 
         try {
-            $query = "INSERT INTO pistas (pistas_img, pistas_desc, pistas_cordenada) VALUES (?, ?, ?)";
+            $query = "INSERT INTO `imagenes`(`imagenes_img`, `imagenes_user`, `imagenes_ruta`, `imagenes_cord`) VALUES (?,?,?,?)";
             $stmt = $connection->prepare($query);
-            $stmt->bind_param("sss", $filePath, $pistaDesc, $pistaCord);
+            $stmt->bind_param("siii", $filePath, $idUser, $ruta, $cord);
+            $stmt->execute();
 
+            $query = "UPDATE `historialrutas` SET `hRuta_cord`=?, `hRuta_fechaUlt`=CURRENT_TIMESTAMP WHERE hRuta_user=? AND hRuta_ruta=?";
+            $stmt = $connection->prepare($query);
+            $stmt->bind_param("iii", $nextCordId, $idUser, $ruta);
             if ($stmt->execute()) {
                 echo json_encode(['success' => true]);
             } else {

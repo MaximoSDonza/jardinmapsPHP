@@ -4,12 +4,11 @@ require_once('../../connection.php');
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-if (isset($data['userNombre']) && isset($data['userClave']) && isset($data['userEmail'])) {
+if (isset($data['userNombre']) && isset($data['userNumero'])) {
     $userNombre = $data['userNombre'];
-    $userClave = $data['userClave'];
-    $userEmail = $data['userEmail'];
+    $userNumero = $data['userNumero'];
     try {
-        $query = "INSERT INTO `users` (users_nombre,users_email,users_clave,users_rango) VALUES(?,?,?,2)";
+        $query = "INSERT INTO `users` (users_nombre,users_numero,users_rango) VALUES(?,?,2)";
         $stmt = $connection->prepare($query);
         
         if (!$stmt) {
@@ -20,7 +19,7 @@ if (isset($data['userNombre']) && isset($data['userClave']) && isset($data['user
             exit;
         }
 
-        $stmt->bind_param("sss", $userNombre, $userEmail, $userClave);
+        $stmt->bind_param("ss", $userNombre, $userNumero);
         
         if ($stmt->execute()) {
             echo json_encode([

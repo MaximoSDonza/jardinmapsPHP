@@ -2,15 +2,19 @@
 require_once('../../cors.php');
 require_once('../../connection.php');
 $data = json_decode(file_get_contents('php://input'), true);
+if (!$data) {
+    echo json_encode(['success' => false, 'error' => 'Error al decodificar JSON.']);
+    exit;
+}
 
-if (isset($data['userEmail']) && isset($data['userClave'])) {
-    $userEmail = $data['userEmail'];
-    $userClave = $data['userClave'];
+if (isset($data['userNombre']) && isset($data['userNumero'])) {
+    $userNombre = $data['userNombre'];
+    $userNumero = $data['userNumero'];
 
     try {
-        $query = "SELECT * FROM users WHERE users_email=? AND users_clave=?";
+        $query = "SELECT * FROM users WHERE users_nombre=? AND users_numero=?";
         $stmt = $connection->prepare($query);
-        $stmt->bind_param("ss", $userEmail, $userClave);
+        $stmt->bind_param("ss", $userNombre, $userNumero);
         
         
         if ($stmt->execute()) {
@@ -18,7 +22,7 @@ if (isset($data['userEmail']) && isset($data['userClave'])) {
 
             if ($row = $result->fetch_assoc()) {
                 $userId = $row['users_id'];
-                $insertQuery = "INSERT INTO historialLogin (hLogin_user) VALUES (?)";
+                $insertQuery = "INSERT INTO historiallogin (hLogin_user) VALUES (?)";
                 $insertStmt = $connection->prepare($insertQuery);
                 $insertStmt->bind_param("i", $userId);
 
@@ -32,15 +36,16 @@ if (isset($data['userEmail']) && isset($data['userClave'])) {
 
                 $insertStmt->close();
             } else {
-            return [
-                'success' => false,
-                'error' => $stmt->error
-            ];
+                return [
+                    'success' => false,
+                    'error' => $stmt->error
+                ];
             }
         }
         $stmt->close();
     } catch (\Throwable $err) {
-        throw $err;
+        echo json_encode(['success' => false, 'error' => $err->getMessage()]);
+        exit;
     }
 
 } else {

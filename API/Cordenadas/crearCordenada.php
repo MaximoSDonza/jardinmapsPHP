@@ -4,14 +4,14 @@ require_once('../../connection.php');
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-if (isset($data['cordTitulo']) && isset($data['cordRuta']) && isset($data['cordLongitud']) && isset($data['cordLatitud'])) {
+if (isset($data['cordTitulo']) && isset($data['cordRuta']) && isset($data['cordFake1']) && isset($data['cordFake2'])) {
     $cordTit = $data['cordTitulo'];
     $cordRut = $data['cordRuta'];
-    $cordLong = $data['cordLongitud'];
-    $cordLat = $data['cordLatitud'];
+    $cordFake1 = $data['cordFake1'];
+    $cordFake2 = $data['cordFake2'];
     $zoom=10;
     try {
-        $query = "INSERT INTO cords (cords_longitude, cords_latitude, cords_zoom, cords_titulo, cords_rutas) VALUES (?, ?, ?, ?, ?)";
+        $query = "INSERT INTO cords (cords_fake1, cords_fake2, cords_zoom, cords_titulo, cords_rutas) VALUES (?, ?, ?, ?, ?)";
         $stmt = $connection->prepare($query);
         
         if (!$stmt) {
@@ -22,7 +22,7 @@ if (isset($data['cordTitulo']) && isset($data['cordRuta']) && isset($data['cordL
             exit;
         }
 
-        $stmt->bind_param("ssisi", $cordLong, $cordLat, $zoom, $cordTit, $cordRut);
+        $stmt->bind_param("ssisi", $cordFake1, $cordFake2, $zoom, $cordTit, $cordRut);
         
         if ($stmt->execute()) {
             echo json_encode([
