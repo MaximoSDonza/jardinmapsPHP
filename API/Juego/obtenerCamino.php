@@ -1,6 +1,7 @@
 <?php
 require_once('../../cors.php');
 require_once('../../connection.php');
+ini_set('memory_limit', '512');
 
 $userId = $_GET['userId'];
 
@@ -43,10 +44,20 @@ try {
                 $pistas[] = $row;
             }
 
+            $query = "SELECT subquery.position FROM historialrutas hr INNER JOIN cords c ON hr.hRuta_cord = c.cords_id INNER JOIN users u ON hr.hRuta_user = u.users_id INNER JOIN ( SELECT cords_id, ROW_NUMBER() OVER (ORDER BY cords_id) AS position FROM cords WHERE cords_rutas = 1 ) AS subquery ON hr.hRuta_cord = subquery.cords_id WHERE hr.hRuta_ruta = 1 AND hr.hRuta_user = ?";
+            $stmt = $connection->prepare($query);
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $position = $row;
+            }
+
             echo json_encode([
                 'success' => true,
                 'cords' => $cords,  
-                'pistas' => $pistas 
+                'pistas' => $pistas,
+                'position' => $position, 
             ]);
         } else {
             // Define $ruta antes de la consulta
@@ -68,28 +79,56 @@ try {
 
             // Validación si no hay imágenes
             if ($imageCount > 0) {
-                // Establecer las dimensiones del collage dinámicamente
-                $imagesPerRow = ceil(sqrt($imageCount));  // Número de imágenes por fila
-                $imageSize = 250;  // Tamaño de cada imagen (puedes ajustarlo)
+                $imagesPerRow = ceil(sqrt($imageCount));  
+                $imageSize = 250;  
                 $collageWidth = $imagesPerRow * $imageSize;
                 $collageHeight = ceil($imageCount / $imagesPerRow) * $imageSize;
 
-                // Crear el lienzo del collage
                 $collage = imagecreatetruecolor($collageWidth, $collageHeight);
 
-                // Posicionar cada imagen en el collage
+                // Fondo transparente para PNGs
+                $backgroundColor = imagecolorallocate($collage, 255, 255, 255); 
+                imagefill($collage, 0, 0, $backgroundColor);
+
                 foreach ($imagePaths as $index => $imagePath) {
                     if (file_exists($imagePath)) {
-                        $image = @imagecreatefromjpeg($imagePath);  // Cargar la imagen (asumiendo que es JPG)
+                        // Detectar el formato de la imagen
+                        $imageInfo = getimagesize($imagePath);
+                        $imageMime = $imageInfo['mime'];
+
+                        switch ($imageMime) {
+                            case 'image/jpeg':
+                                $image = imagecreatefromjpeg($imagePath);
+                                break;
+                            case 'image/png':
+                                $image = imagecreatefrompng($imagePath);
+                                
+                                // Habilitar la transparencia para las imágenes PNG
+                                imagealphablending($image, true);
+                                imagesavealpha($image, true);
+                                
+                                break;
+                            default:
+                                continue 2; // Saltar si el formato no es compatible
+                        }
+
                         if ($image === false) {
                             continue;
                         }
 
-                        // Redimensionar la imagen
+                        // Crear una imagen redimensionada
                         $resizedImage = imagecreatetruecolor($imageSize, $imageSize);
+
+                        // Si es PNG, preservar la transparencia en la imagen redimensionada
+                        if ($imageMime === 'image/png') {
+                            imagealphablending($resizedImage, false);
+                            imagesavealpha($resizedImage, true);
+                            $transparent = imagecolorallocatealpha($resizedImage, 0, 0, 0, 127);
+                            imagefill($resizedImage, 0, 0, $transparent);
+                        }
+
                         imagecopyresampled($resizedImage, $image, 0, 0, 0, 0, $imageSize, $imageSize, imagesx($image), imagesy($image));
 
-                        // Calcular las coordenadas para colocar la imagen en el collage
                         $x = ($index % $imagesPerRow) * $imageSize;
                         $y = floor($index / $imagesPerRow) * $imageSize;
                         imagecopy($collage, $resizedImage, $x, $y, 0, 0, $imageSize, $imageSize);
@@ -99,9 +138,8 @@ try {
                     }
                 }
 
-                // Convertir el collage en base64
                 ob_start();
-                imagejpeg($collage);
+                imagepng($collage);  // Cambié a imagepng para manejar mejor la transparencia
                 $imageData = ob_get_contents();
                 ob_end_clean();
                 imagedestroy($collage);
@@ -112,14 +150,16 @@ try {
                 echo json_encode([
                     'success' => true,
                     'cords' => [],  
-                    'pistas' => [], 
+                    'pistas' => [],
+                    'position' => '', 
                     'collage' => $base64Collage
                 ]);
             } else {
                 echo json_encode([
                     'success' => false,
                     'cords' => [],  
-                    'pistas' => [], 
+                    'pistas' => [],
+                    'position' => '', 
                     'message' => 'No hay imágenes para crear un collage'
                 ]);
             }
@@ -128,17 +168,18 @@ try {
         echo json_encode([
             'success' => false,
             'cords' => [],  
-            'pistas' => [], 
+            'pistas' => [],
+            'position' => '', 
             'error' => $stmt->error
         ]);
     }
 
-    $stmt->close();
 } catch (\Throwable $err) {
     echo json_encode([
         'success' => false,
         'cords' => [],  
-        'pistas' => [], 
+        'pistas' => [],
+        'position' => '', 
         'error' => $err->getMessage()
     ]);
 }

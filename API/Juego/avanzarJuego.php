@@ -1,6 +1,7 @@
 <?php
 require_once('../../cors.php');
 require_once('../../connection.php');
+ini_set('memory_limit', '512');
 
 if (isset($_FILES['file']) && isset($_POST['cord']) && isset($_POST['user'])) {
     $cord = $_POST['cord'];

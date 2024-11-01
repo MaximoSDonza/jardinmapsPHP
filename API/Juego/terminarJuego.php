@@ -2,13 +2,13 @@
 require_once('../../cors.php');
 require_once('../../connection.php');
 
-if (isset($_POST['ruta']) && isset($_POST['user'])) {
-    $idUser = $_POST['user'];
-    $ruta = $_POST['ruta'];
+if (isset($_POST['idRuta']) && isset($_POST['idUser'])) {
+    $idUser = $_POST['idUser'];
+    $ruta = $_POST['idRuta'];
 
     $query = "SELECT imagenes_img FROM imagenes WHERE imagenes_user = ? AND imagenes_ruta = ?";
     $stmt = $connection->prepare($query);
-    $stmt->bind_param("ii", $userId, $ruta);
+    $stmt->bind_param("ii", $idUser, $ruta);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -24,14 +24,12 @@ if (isset($_POST['ruta']) && isset($_POST['user'])) {
         }
     }
 
-
-
     try {
         $deleteQuery = "DELETE FROM imagenes WHERE imagenes_user = ? AND imagenes_ruta = ?";
         $deleteStmt = $connection->prepare($deleteQuery);
-        $deleteStmt->bind_param("ii", $userId, $ruta);
+        $deleteStmt->bind_param("ii", $idUser, $ruta);
         $deleteStmt->execute();
-        
+
         $query = "INSERT INTO `terminados`(`terminados_user`, `terminados_ruta`) VALUES (?,?)";
         $stmt = $connection->prepare($query);
         $stmt->bind_param("ii", $idUser, $ruta);
@@ -54,5 +52,4 @@ if (isset($_POST['ruta']) && isset($_POST['user'])) {
 } else {
     echo json_encode(['success' => false, 'error' => 'Datos incompletos.']);
 }
-
 ?>
